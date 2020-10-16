@@ -123,7 +123,7 @@ function updateValues(){
     .reduce((acc, item) => (acc += item), 0).toFixed(2);
     const expense = amounts
     .filter(item => item < 0)
-    .reduce((acc, item) => (acc += item), 0).toFixed(2) * 1;
+    .reduce((acc, item) => (acc += item), 0).toFixed(2);
     balance.innerHTML = `$${total}`;
     money_plus.innerHTML = `$${income}`;
     money_minus.innerHTML = `$${expense}`;
