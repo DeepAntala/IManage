@@ -199,7 +199,7 @@ $(".addtodo input[type='text']").keypress(function(event){
 })
 
 $(".fa-plus").click(function(){
-	$("input[type='text']").fadeToggle();
+	$(".todo-container input[type='text']").fadeToggle();
 	$(".addone").fadeToggle();
 })
 
