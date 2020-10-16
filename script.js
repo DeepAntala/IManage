@@ -1,129 +1,244 @@
-const search = document.getElementById('search'),
-submit = document.getElementById('submit'),
-random = document.getElementById('random'),
-mealsEL = document.getElementById('meals'),
-resultHeading = document.getElementById('result-heading'),
-single_mealEl = document.getElementById('single-meal');
+const balance = document.getElementById('balance');
+const money_plus = document.getElementById('money-plus');
+const money_minus = document.getElementById('money-minus');
+const list = document.getElementById('list');
+const form = document.getElementById('form');
+const text = document.getElementById('text');
+const amount = document.getElementById('amount');
+const stList = document.getElementById('MonthlySpendings');
 
+// const dummyTransactions = [
+//     {
+//         id: 1, text: 'Flower', amount: -20
+//     },
+//     {
+//         id: 2, text: 'Flower', amount: +20
+//     },
+//     {
+//         id: 3, text: 'Flower', amount: -20
+//     },
+//     {
+//         id: 4, text: 'Flower', amount: -20
+//     }
 
-document.addEventListener('DOMContentLoaded', searchMeal =>{
-fetch("https://www.themealdb.com/api/json/v1/1/search.php?s=")
-        .then(res => res.json())
-        .then(data => {
-            resultHeading.innerHTML = "<h2>Welcome</h2>";
+// ];
 
-            if(data.meals === null){
-                resultHeading.innerHTML = `<p>There are not search results. Try again</p>`
-            }else{
-                mealsEL.innerHTML = data.meals.map(meal => 
-                    `<div class='meal'>
-                        <img src="${meal.strMealThumb}" alt="${meal.strMeal}" />
-                        <div class="meal-info" data-mealID="${meal.idMeal}">
-                            <h3>${meal.strMeal} </h3>
-                            <h5> Click and scroll down to see the recipe</h5>
-                        </div>
-                    </div>`)
-                    .join('');
-            }
-        })
-    });
+const localStorageTransactions = JSON.parse(localStorage.getItem('transactions'));
+let transactions = localStorage.getItem('transactions') != null? localStorageTransactions: [];
+const localGroupStorageTransactions = JSON.parse(localStorage.getItem('groupTransactions'));
+let groupTransactions = localStorage.getItem('groupTransactions') != null? localGroupStorageTransactions: [];
 
-
-function searchMeal(e){
+function addTransaction(e){
     e.preventDefault();
-    single_mealEl.innerHTML = '';
-
-    const term = search.value;
-    if(term.trim()){
-        fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${term}`)
-        .then(res => res.json())
-        .then(data => {
-            resultHeading.innerHTML = `<h2>Search results for '${term}':</h2>`;
-
-            if(data.meals === null){
-                resultHeading.innerHTML = `<p>There are not search results. Try again</p>`
-            }else{
-                mealsEL.innerHTML = data.meals.map(meal => 
-                    `<div class='meal'>
-                        <img src="${meal.strMealThumb}" alt="${meal.strMeal}" />
-                            <div class="meal-info" data-mealID="${meal.idMeal}">
-                                <h3>${meal.strMeal}</h3>
-                            </div>
-                    </div>`)
-                    .join('');
-            }
-        });
-        search.value = "";
+    if(text.value.trim() === '' || amount.value.trim() === ''){
+        alert("Please enter a text and/or amount");
+        
     }else{
-        location.reload();
-        return false;
+        const transaction = {
+            id: generateID(),
+            text: text.value,
+            amount: +amount.value
+        };
+        transactions.push(transaction);
+        addTransactionDOM(transaction);
+        updateValues();
+        updateLocalStorage();
+        text.value = '';
+        amount.value = '';
     }
 }
 
-function getRandomMeal(){
-    mealsEL.innerHTML = "";
-    resultHeading.innerHTML = "";
-    fetch(`https://www.themealdb.com/api/json/v1/1/random.php`)
-    .then(res => res.json())
-    .then(data => {
-        const meal = data.meals[0];
-        addMealToDOM(meal);
-    })
-}
-
-function getMealById(mealID){
-    fetch(`https://www.themealdb.com/api/json/v1/1/lookup.php?i=${mealID}`)
-    .then(res => res.json())
-    .then(data => {
-        const meal = data.meals[0];
-        addMealToDOM(meal);
-
-    });
-}
-
-function addMealToDOM(meal){
-    const ingredients = [];
-    for(let i=1; i<= 20; i++){
-        if(meal[`strIngredient${i}`]){
-            ingredients.push(`${meal[`strIngredient${i}`]} - ${meal[`strMeasure${i}`]}`);
-        }
-        else{
-            break;
-        }
+function addGroupTransaction(){
+    var m = [];
+    let groupName = prompt('Enter your transaction name');
+    if(groupName === null){
+        return;
     }
-    single_mealEl.innerHTML = `
-        <div class="single-meal">
-            <h1>${meal.strMeal}</h1>
-            <img src="${meal.strMealThumb}" alt="${meal.strMeal}" />
-            <div class="single-meal-info">
-                ${meal.strCategory? `<p>${meal.strCategory}</p>` : ''}
-                ${meal.strArea ? `<p>${meal.strArea}</p>` : ''}
-      
-                </div>
-                <div class='main'>
-                    <p>${meal.strInstructions}</p>
-                    <h2>Ingredients</h2>
-                    <ul>
-                        ${ingredients.map(ing => `<li>${ing}</li>`).join('')}
-                    </ul>
-                </div>
-            </div>
+    else if (groupName === "") {
+        alert("Please enter a title for your transaction");
+        addGroupTransaction();
+    } else {
+        transactions.forEach( transaction => {
+            m.push(transaction);
+        })
+        const groupTransaction = {
+            id: generateID(),
+            name: groupName,
+            myList: m
+        };
+        groupTransactions.push(groupTransaction);
+        saveAllDOM(groupTransaction);
+        updateGroupLocalStorage();
+    }  
+
+}
+
+function saveAllDOM(groupTransaction){
+    var ulitem = document.createElement('ul');
+    const groupTransactions = groupTransaction.myList;
+    const div = document.createElement('div');
+    div.innerHTML = `
+        <h2>${groupTransaction.name}</h2>
+        <button class="delete-btn-tra" onclick="removeGroupTransaction(${groupTransaction.id})">Remove</button>
     `;
+    ulitem.appendChild(div);
+;    groupTransactions.forEach(transaction => {
+        const sign = transaction.amount < 0 ? '-' : '+';
+        const item = document.createElement('li');
+        item.classList.add(transaction.amount < 0 ? 'minus': 'plus');
+        item.innerHTML = `
+        ${transaction.text} 
+        <span>${sign}${Math.abs(transaction.amount)}</span>
+        `;
+        ulitem.appendChild(item);
+    });
+    stList.appendChild(ulitem);
+    
 }
 
-submit.addEventListener('submit', searchMeal);
-random.addEventListener('click', getRandomMeal);
+function generateID(){
+    return Math.floor(Math.random() * 100000000);
+}
 
-mealsEL.addEventListener('click', e => {
-    const mealInfo = e.path.find(item => {
-        if(item.classList){
-            return item.classList.contains('meal-info');
-        }else{
-            return false;
-        }
-    });
-    if(mealInfo){
-        const mealID = mealInfo.getAttribute('data-mealid');
-        getMealById(mealID);
-    }
+
+function addTransactionDOM(transaction){
+    const sign = transaction.amount < 0 ? '-' : '+';
+    const item = document.createElement('li');
+    
+    item.classList.add(transaction.amount < 0 ? 'minus': 'plus');
+    item.innerHTML = `
+        ${transaction.text} 
+        <span>${sign}${Math.abs(transaction.amount)}</span>
+        <button class="delete-btn" onclick="removeTransaction(${transaction.id})">X</button>
+    `;
+    list.appendChild(item);
+}
+
+
+function updateValues(){
+    const amounts = transactions.map(transaction => transaction.amount);
+    const total = amounts.reduce((acc, item) => (acc += item), 0).toFixed(2);
+    const income = amounts
+    .filter(item => item > 0)
+    .reduce((acc, item) => (acc += item), 0).toFixed(2);
+    const expense = amounts
+    .filter(item => item < 0)
+    .reduce((acc, item) => (acc += item), 0).toFixed(2) * 1;
+    balance.innerHTML = `$${total}`;
+    money_plus.innerHTML = `$${income}`;
+    money_minus.innerHTML = `$${expense}`;
+}
+
+function removeTransaction(id){
+    transactions = transactions.filter(transaction => transaction.id !== id);
+    updateLocalStorage();
+    init();
+}
+
+function removeGroupTransaction(id){
+    groupTransactions = groupTransactions.filter(groupTransaction => groupTransaction.id !== id);
+    updateGroupLocalStorage();
+    init();
+}
+
+function updateLocalStorage(){
+    localStorage.setItem('transactions', JSON.stringify(transactions));
+}
+
+function updateGroupLocalStorage(){
+    localStorage.setItem('groupTransactions', JSON.stringify(groupTransactions));
+}
+
+function init(){
+    list.innerHTML = '';
+    stList.innerHTML = '';
+    transactions.forEach(addTransactionDOM);
+    groupTransactions.forEach(saveAllDOM);
+    updateValues();
+}
+
+function clearAll(){
+    transactions = [];
+    text.value = '';
+    amount.value = '';
+    updateLocalStorage();
+    init();
+}
+
+init();
+form.addEventListener('submit', addTransaction);
+//localStorage.clear();
+
+
+// to-do lists
+document.addEventListener('DOMContentLoaded', getList);
+
+$(".addone").on("click",function(event){
+	event.preventDefault();
+	var enterText=$("input[type='text']").val();
+		$("input[type='text']").val("");
+		$(".ul-todo").append("<li><span><i class='fa fa-trash'></i></span>" + enterText + "</li>");
+		saveNewTodos(enterText);
 });
+
+$(".ul-todo").on("click", "span", function(e){
+	const item=$(this).parent()[0].lastChild.data;
+	$(this).parent().fadeOut(400, function(){
+	$(this).remove();
+	});
+	deleteItem(item);
+})
+
+$(".addtodo input[type='text']").keypress(function(event){
+	if(event.which === 13){
+		var enterText=$(this).val();
+		$(this).val("");
+		$(".ul-todo").append("<li><span><i class='fa fa-trash'></i></span>" + enterText + "</li>");
+		saveNewTodos(enterText);
+	}
+})
+
+$(".fa-plus").click(function(){
+	$("input[type='text']").fadeToggle();
+	$(".addone").fadeToggle();
+})
+
+function saveNewTodos(item){
+	let items;
+		if(localStorage.getItem('items') === null){
+			items = [];
+		}
+		else{
+			items = JSON.parse(localStorage.getItem('items'));
+		}
+		items.push(item);
+		localStorage.setItem('items', JSON.stringify(items));		
+}
+
+function getList(){
+	let items;
+		if(localStorage.getItem('items') === null){
+			items = [];
+		}
+		else{
+			items = JSON.parse(localStorage.getItem('items'));
+		}
+	console.log(items);
+	items.forEach(function(item){
+        console.log(item);
+		$(".ul-todo").append("<li><span><i class='fa fa-trash'></i></span>" + item + "</li>");	
+	})
+}
+
+function deleteItem(item){
+	let items;
+		if(localStorage.getItem('items') === null){
+			items = [];
+		}
+		else{
+			items = JSON.parse(localStorage.getItem('items'));
+		}	
+		items.splice(items.indexOf(item), 1);
+		localStorage.setItem('items', JSON.stringify(items));
+
+}
